@@ -1,0 +1,30 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "UrbanVisionTiles",
+  "Description": "Load tiles from any source ant fills map",
+  "Category": "Other",
+  "CreatedBy": "kir1251",
+  "CreatedByURL": "",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "CanContainContent": true,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "UrbanVisionTiles",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+
+  "Plugins": [
+    {
+      "Name": "ProceduralMeshComponent",
+      "Enabled": true
+    },
+  ]
+}
