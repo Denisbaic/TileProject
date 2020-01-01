@@ -4,6 +4,8 @@
 #include "TileLoader.h"
 #include "Engine/Engine.h"
 #include "Engine/Texture2DDynamic.h"
+#include "Materials/MaterialInstanceDynamic.h"
+
 
 // Sets default values for this component's properties
 ATilesController::ATilesController()
@@ -39,8 +41,8 @@ void ATilesController::Tick(float DeltaTime)
 	
 	CreateMeshAroundPoint(BaseLevel, x0, y0);
 
-	TArray<FTileTextureMeta> pendingDelete;
-	TArray<FTileTextureMeta, FHeapAllocator> pendingUpdate;	
+	//TArray<FTileTextureMeta> pendingDelete;
+	//TArray<FTileTextureMeta, FHeapAllocator> pendingUpdate;	
 	for (auto tile : TileIndecies)
 	{
 		if (SplitTiles.Contains(tile.Key)) continue;
@@ -106,17 +108,10 @@ void ATilesController::Tick(float DeltaTime)
 					ClearTileMesh(meta1);					
 				}
 			}
-
-			
-			
 		}
-		
 	}
-	for(auto meta : pendingDelete)
-	{
-		if (!TileIndecies.Contains(meta)) continue;		
-			
-	}
+	pendingDelete.Empty();
+	pendingUpdate.Empty();
 }
 
 float ATilesController::GetPixelSize(FTileTextureMeta meta)
@@ -134,12 +129,14 @@ float ATilesController::GetPixelSize(FTileTextureMeta meta)
 
 void ATilesController::CreateMesh()
 {
-	if (!TileLoader) TileLoader = NewObject<UTileTextureContainer>(this);
+	if (!TileLoader) 
+		
+		TileLoader = NewObject<UTileTextureContainer>(this);
 
-	int z = BaseLevel;
+	const int z = BaseLevel;
 
-	int x0 = GetMercatorXFromDegrees(CenterLon) * (1 << z);
-	int y0 = GetMercatorYFromDegrees(CenterLat) * (1 << z);
+	const int x0 = GetMercatorXFromDegrees(CenterLon) * (1 << z);
+	const int y0 = GetMercatorYFromDegrees(CenterLat) * (1 << z);
 	
 	for (int x = 0; x < BaseLevelSize; x++)
 	{
@@ -159,7 +156,8 @@ void ATilesController::ClearMesh()
 
 void ATilesController::CreateMeshAroundPoint(int z, int x0, int y0)
 {
-	if (!TileLoader)	TileLoader = NewObject<UTileTextureContainer>(this);
+	if (!TileLoader)	
+		TileLoader = NewObject<UTileTextureContainer>(this);
 
 	//mesh->ClearAllMeshSections();
 	for (int x = 0; x < BaseLevelSize; x++)
@@ -191,8 +189,8 @@ void ATilesController::GetMercatorXYOffsetFromOffset(FVector offsetValue, int z,
 {
 	float fdx = offsetValue.X * (1 << z) / 360 / EarthOneDegreeLengthOnEquatorMeters / FMath::Cos(CenterLat * PI / 180);
 	float fdy = offsetValue.Y * (1 << z) / 360 / EarthOneDegreeLengthOnEquatorMeters / FMath::Cos(CenterLat * PI / 180);
-	dx = (int)FMath::RoundFromZero(fdx);
-	dy = (int)FMath::RoundFromZero(fdy);
+	dx = static_cast<int>(FMath::RoundFromZero(fdx));
+	dy = static_cast<int>(FMath::RoundFromZero(fdy));
 }
 
 FVector ATilesController::GetXYOffsetFromMercatorOffset(int z, int x, int y)
@@ -410,7 +408,7 @@ UTileInfo* UTileTextureContainer::GetTileMaterial(FTileTextureMeta meta, UMateri
 		loadingImages.Add(meta, loader);
 		//matInstance->SetTextureParameterValue("Tile", CachedTextures[meta]);
 		auto TileInfo = NewObject<UTileInfo>();
-		TileInfo->Container = this;
+		//TileInfo->Container = this;
 		TileInfo->Material = matInstance;
 		TileInfo->lastAcessTime = FDateTime::Now();
 		CachedTiles.Add(meta, TileInfo);
@@ -450,4 +448,107 @@ bool UTileTextureContainer::IsTextureLoaded(FTileTextureMeta meta)
 void UTileTextureContainer::Clear()
 {
 	CachedTiles.Empty();
+}
+
+ATilesController2::ATilesController2()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	mesh = CreateDefaultSubobject<URuntimeMeshComponent>(TEXT("Tiles mesh"), true);
+	SetRootComponent(mesh);
+}
+
+void ATilesController2::BeginPlay()
+{
+	Super::BeginPlay();
+	ClearMesh();
+	CreateMesh();
+}
+
+void ATilesController2::Tick(float DeltaTime)
+{
+	mesh->Get
+}
+
+void ATilesController2::CreateMesh()
+{
+	if (!TileLoader)
+		TileLoader = NewObject<UTileTextureContainer2>(this);
+
+
+	const int z = BaseLevel;
+
+	const int x0 = GetMercatorXFromDegrees(CenterLon) * (1 << z);
+	const int y0 = GetMercatorYFromDegrees(CenterLat) * (1 << z);
+
+	for (int x = 0; x < BaseLevelSize; x++)
+	{
+		for (int y = 0; y < BaseLevelSize; y++)
+		{
+			CreateTileMesh(x + x0 - BaseLevelSize / 2, y + y0 - BaseLevelSize / 2, z);
+		}
+	}
+}
+
+int ATilesController2::CreateTileMesh(FTileTextureMeta2 meta)
+{
+	if (TileIndecies.Contains(meta)) {
+		//mesh->SetMeshSectionVisible(TileIndecies[meta], true);
+		return TileIndecies[meta];
+	}
+	int x = meta.X;
+	int y = meta.Y;
+	int z = meta.Z;
+	TArray<FVector> vertices;
+	TArray<FVector> normals;
+	TArray<int> triangles;
+	TArray<FVector2D> uvs;
+
+	float x0 = GetMercatorXFromDegrees(CenterLon) * (1 << z);
+	float y0 = GetMercatorYFromDegrees(CenterLat) * (1 << z);
+	float size = EarthOneDegreeLengthOnEquatorMeters / (1 << z) * 360 * FMath::Cos(CenterLat * PI / 180);
+
+	FVector delta((x - x0) * size, (y - y0) * size, 0);
+
+	vertices.Add(delta + FVector(0, 0, 0));
+	vertices.Add(delta + FVector(size, 0, 0));
+	vertices.Add(delta + FVector(size, size, 0));
+	vertices.Add(delta + FVector(0, size, 0));
+
+	normals.Add(FVector::UpVector);
+	normals.Add(FVector::UpVector);
+	normals.Add(FVector::UpVector);
+	normals.Add(FVector::UpVector);
+
+	uvs.Add(FVector2D(0, 0));
+	uvs.Add(FVector2D(1, 0));
+	uvs.Add(FVector2D(1, 1));
+	uvs.Add(FVector2D(0, 1));
+
+	triangles.Add(0);
+	triangles.Add(2);
+	triangles.Add(1);
+
+	triangles.Add(0);
+	triangles.Add(3);
+	triangles.Add(2);
+
+
+	int sectionIndex = -1;
+	if (freeIndices.Num() > 0)
+	{
+		sectionIndex = freeIndices.Last();
+		freeIndices.RemoveAt(freeIndices.Num() - 1);
+	}
+	else
+	{
+		sectionIndex = mesh->GetNumSections();
+	}
+	mesh->CreateMeshSection(sectionIndex, vertices, triangles, normals, uvs, TArray<FColor>(),
+		TArray<FRuntimeMeshTangent>(), false);
+	auto tile = TileLoader->GetTileMaterial(x, y, z, TileMaterial, this->GetOwner());
+	mesh->SetMaterial(sectionIndex, tile->Material);
+	TileLoader->CachedTiles[meta]->IsActive = true;
+	TileIndecies.Add(meta, sectionIndex);
+	Tiles.Add(meta, tile);
+	return  sectionIndex;
 }
