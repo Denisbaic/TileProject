@@ -4,6 +4,7 @@
 #include "TileLoader.h"
 #include "Engine/Engine.h"
 #include "Engine/Texture2DDynamic.h"
+#include "GameFramework/Character.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 
@@ -426,7 +427,6 @@ void UTileTextureContainer::CacheTexture(FTileTextureMeta meta, UTexture* textur
 	if (CachedTiles.Contains(meta)) {
 		CachedTiles[meta]->Texture = texture;
 	}
-	
 }
 
 void UTileTextureContainer::FreeLoader(FTileTextureMeta meta)
@@ -454,101 +454,149 @@ ATilesController2::ATilesController2()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	mesh = CreateDefaultSubobject<URuntimeMeshComponent>(TEXT("Tiles mesh"), true);
+	
+	
+	//TileMaterial = NewObject<UMaterialInterface>();
+	
 	SetRootComponent(mesh);
 }
 
 void ATilesController2::BeginPlay()
 {
 	Super::BeginPlay();
-	ClearMesh();
-	CreateMesh();
+	TArray<FVector> Vertices;
+	TArray<FVector> Normals;
+	TArray<FRuntimeMeshTangent> Tangents;
+	TArray<FColor> VertexColors;
+	TArray<FVector2D> TextureCoordinates;
+	TArray<int32> Triangles;
+
+	// First vertex
+	Vertices.Add(FVector(0, 256, 0));
+	Normals.Add(FVector(0, 0, 1));
+	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
+	VertexColors.Add(FColor::White);
+	TextureCoordinates.Add(FVector2D(0, 0));
+
+	// Second vertex
+	Vertices.Add(FVector(256, 256, 0));
+	Normals.Add(FVector(0, 0, 1));
+	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
+	VertexColors.Add(FColor::White);
+	TextureCoordinates.Add(FVector2D(0, 1));
+
+	// Third vertex
+	Vertices.Add(FVector(256, 0, 0));
+	Normals.Add(FVector(0, 0, 1));
+	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
+	VertexColors.Add(FColor::White);
+	TextureCoordinates.Add(FVector2D(1, 1));
+
+	// Fourth vertex
+	Vertices.Add(FVector(0, 0, 0));
+	Normals.Add(FVector(0, 0, 1));
+	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
+	VertexColors.Add(FColor::White);
+	TextureCoordinates.Add(FVector2D(1, 0));
+
+	Triangles.Add(0);
+	Triangles.Add(1);
+	Triangles.Add(2);
+	Triangles.Add(0);
+	Triangles.Add(2);
+	Triangles.Add(3);
+	mesh->CreateMeshSection(0, Vertices, Triangles, Normals, TextureCoordinates, VertexColors, Tangents);
+	PlayerController = GetWorld()->GetFirstPlayerController();
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *PlayerController->GetName());
+	CurrentLevel= (mesh->GetComponentLocation() - PlayerController->GetPawn()->GetActorLocation()).Size();
+	//matInstance = UMaterialInstanceDynamic::Create(TileMaterial, this);
+	//FString TileM = TileMaterial ? TileMaterial->GetName() : "TileM:Null";
+	//FString TileDM = matInstance ? matInstance->GetName() : "TileDM:Null";
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *TileM);
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *TileDM);
+	//mesh->SetMaterial(0, matInstance);
 }
 
 void ATilesController2::Tick(float DeltaTime)
 {
-	mesh->Get
+	//UE_LOG(LogTemp, Warning, TEXT("Tick"));
+	auto Distance = (mesh->GetComponentLocation() - PlayerController->GetPawn()->GetActorLocation()).Size();
+	int level = Distance / 200.f;
+	if(level==CurrentLevel)
+		return;
+	CurrentLevel = level;
+
+	int z = FMath::Clamp(MaxLevel - CurrentLevel,0,MaxLevel);
+	int y; int x = y = 0;
+	LoaderPtr = NewObject<UTextureDownloader2>();
+	LoaderPtr->TextureMeta = { 0,0,z };
+
+	UMaterialInstanceDynamic* matInstance = UMaterialInstanceDynamic::Create(TileMaterial,this);
+	LoaderPtr->material = matInstance;
+	LoaderPtr->mesh = mesh;
+	mesh->SetMaterial(0, matInstance);
+	//loadingImages.Add(LoaderPtr->TextureMeta, LoaderPtr);
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *LoaderPtr->TextureMeta.ToString());
+	auto url = FString::Format(*UrlString, { z, 0, 0});
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *url);
+	LoaderPtr->StartDownloadingTile(LoaderPtr->TextureMeta, url);
+
 }
 
-void ATilesController2::CreateMesh()
+void UTextureDownloader2::StartDownloadingTile(FTileTextureMeta meta,  FString url)
 {
-	if (!TileLoader)
-		TileLoader = NewObject<UTileTextureContainer2>(this);
-
-
-	const int z = BaseLevel;
-
-	const int x0 = GetMercatorXFromDegrees(CenterLon) * (1 << z);
-	const int y0 = GetMercatorYFromDegrees(CenterLat) * (1 << z);
-
-	for (int x = 0; x < BaseLevelSize; x++)
-	{
-		for (int y = 0; y < BaseLevelSize; y++)
-		{
-			CreateTileMesh(x + x0 - BaseLevelSize / 2, y + y0 - BaseLevelSize / 2, z);
-		}
-	}
+	//TextureMeta = meta;
+	//__Texture = _Texture;
+	UE_LOG(LogTemp, Warning, TEXT("In StartDownloadingTile"));
+	_loader = UAsyncTaskDownloadImage::DownloadImage(url);
+	UE_LOG(LogTemp, Warning, TEXT("543"));
+	_loader->OnSuccess.AddDynamic(this, &UTextureDownloader2::OnTextureLoaded);
+	_loader->OnFail.AddDynamic(this, &UTextureDownloader2::OnLoadFailed);
+	UE_LOG(LogTemp, Warning, TEXT("546"));
 }
 
-int ATilesController2::CreateTileMesh(FTileTextureMeta2 meta)
+void UTextureDownloader2::OnTextureLoaded(UTexture2DDynamic* Texture)
 {
-	if (TileIndecies.Contains(meta)) {
-		//mesh->SetMeshSectionVisible(TileIndecies[meta], true);
-		return TileIndecies[meta];
-	}
-	int x = meta.X;
-	int y = meta.Y;
-	int z = meta.Z;
-	TArray<FVector> vertices;
-	TArray<FVector> normals;
-	TArray<int> triangles;
-	TArray<FVector2D> uvs;
-
-	float x0 = GetMercatorXFromDegrees(CenterLon) * (1 << z);
-	float y0 = GetMercatorYFromDegrees(CenterLat) * (1 << z);
-	float size = EarthOneDegreeLengthOnEquatorMeters / (1 << z) * 360 * FMath::Cos(CenterLat * PI / 180);
-
-	FVector delta((x - x0) * size, (y - y0) * size, 0);
-
-	vertices.Add(delta + FVector(0, 0, 0));
-	vertices.Add(delta + FVector(size, 0, 0));
-	vertices.Add(delta + FVector(size, size, 0));
-	vertices.Add(delta + FVector(0, size, 0));
-
-	normals.Add(FVector::UpVector);
-	normals.Add(FVector::UpVector);
-	normals.Add(FVector::UpVector);
-	normals.Add(FVector::UpVector);
-
-	uvs.Add(FVector2D(0, 0));
-	uvs.Add(FVector2D(1, 0));
-	uvs.Add(FVector2D(1, 1));
-	uvs.Add(FVector2D(0, 1));
-
-	triangles.Add(0);
-	triangles.Add(2);
-	triangles.Add(1);
-
-	triangles.Add(0);
-	triangles.Add(3);
-	triangles.Add(2);
-
-
-	int sectionIndex = -1;
-	if (freeIndices.Num() > 0)
+	//*__Texture = Texture;
+	UE_LOG(LogTemp, Warning, TEXT("In TextureLoaded"));
+	if(material->IsValidLowLevel())
 	{
-		sectionIndex = freeIndices.Last();
-		freeIndices.RemoveAt(freeIndices.Num() - 1);
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *material->GetName());
 	}
 	else
 	{
-		sectionIndex = mesh->GetNumSections();
+		UE_LOG(LogTemp, Warning, TEXT("NULL"));
+	}	
+
+	if (Texture->IsValidLowLevel())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *Texture->GetName());
 	}
-	mesh->CreateMeshSection(sectionIndex, vertices, triangles, normals, uvs, TArray<FColor>(),
-		TArray<FRuntimeMeshTangent>(), false);
-	auto tile = TileLoader->GetTileMaterial(x, y, z, TileMaterial, this->GetOwner());
-	mesh->SetMaterial(sectionIndex, tile->Material);
-	TileLoader->CachedTiles[meta]->IsActive = true;
-	TileIndecies.Add(meta, sectionIndex);
-	Tiles.Add(meta, tile);
-	return  sectionIndex;
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("NULL"));
+	}
+
+	if (mesh->IsValidLowLevel())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("%s"), *mesh->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("NULL"));
+	}
+
+	
+
+	//material=mesh->CreateAndSetMaterialInstanceDynamic(0);
+	material->SetTextureParameterValue(FName("Tile"), (UTexture*)(Texture));
+	
+
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *TextureMeta.ToString());
+	
+}
+
+void UTextureDownloader2::OnLoadFailed(UTexture2DDynamic * Texture)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Load failed"));
 }
