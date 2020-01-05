@@ -6,6 +6,8 @@
 #include "Engine/Texture2DDynamic.h"
 #include "GameFramework/Character.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "Kismet/GameplayStatics.h"
+#include "DrawDebugHelpers.h"
 
 
 // Sets default values for this component's properties
@@ -464,40 +466,17 @@ ATilesController2::ATilesController2()
 void ATilesController2::BeginPlay()
 {
 	Super::BeginPlay();
-	TArray<FVector> Vertices;
-	TArray<FVector> Normals;
-	TArray<FRuntimeMeshTangent> Tangents;
-	TArray<FColor> VertexColors;
-	TArray<FVector2D> TextureCoordinates;
 	TArray<int32> Triangles;
+	TArray<FRuntimeMeshVertexSimple> _Vertices;
 
 	// First vertex
-	Vertices.Add(FVector(0, 256, 0));
-	Normals.Add(FVector(0, 0, 1));
-	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
-	VertexColors.Add(FColor::White);
-	TextureCoordinates.Add(FVector2D(0, 0));
-
+	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(0, 256, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(0, 0)));
 	// Second vertex
-	Vertices.Add(FVector(256, 256, 0));
-	Normals.Add(FVector(0, 0, 1));
-	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
-	VertexColors.Add(FColor::White);
-	TextureCoordinates.Add(FVector2D(0, 1));
-
+	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(256, 256, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(0, 1)));
 	// Third vertex
-	Vertices.Add(FVector(256, 0, 0));
-	Normals.Add(FVector(0, 0, 1));
-	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
-	VertexColors.Add(FColor::White);
-	TextureCoordinates.Add(FVector2D(1, 1));
-
+	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(256, 0, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(1, 1)));
 	// Fourth vertex
-	Vertices.Add(FVector(0, 0, 0));
-	Normals.Add(FVector(0, 0, 1));
-	Tangents.Add(FRuntimeMeshTangent(0, -1, 0));
-	VertexColors.Add(FColor::White);
-	TextureCoordinates.Add(FVector2D(1, 0));
+	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(0, 0, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(1, 0)));
 
 	Triangles.Add(0);
 	Triangles.Add(1);
@@ -505,27 +484,56 @@ void ATilesController2::BeginPlay()
 	Triangles.Add(0);
 	Triangles.Add(2);
 	Triangles.Add(3);
-	mesh->CreateMeshSection(0, Vertices, Triangles, Normals, TextureCoordinates, VertexColors, Tangents);
+
+	// Create the section bounding box
+	FBox SectionBoundingBox(FVector(0, 0, 0), FVector(256, 256, 0));
+
+	mesh->CreateMeshSection(0, _Vertices, Triangles, SectionBoundingBox, true, EUpdateFrequency::Infrequent);
 	PlayerController = GetWorld()->GetFirstPlayerController();
 	//UE_LOG(LogTemp, Warning, TEXT("%s"), *PlayerController->GetName());
 	CurrentLevel= (mesh->GetComponentLocation() - PlayerController->GetPawn()->GetActorLocation()).Size();
-	//matInstance = UMaterialInstanceDynamic::Create(TileMaterial, this);
-	//FString TileM = TileMaterial ? TileMaterial->GetName() : "TileM:Null";
-	//FString TileDM = matInstance ? matInstance->GetName() : "TileDM:Null";
-	//UE_LOG(LogTemp, Warning, TEXT("%s"), *TileM);
-	//UE_LOG(LogTemp, Warning, TEXT("%s"), *TileDM);
-	//mesh->SetMaterial(0, matInstance);
+	
+	MapSize = MaxLevel ? 256 * 2 << MaxLevel : 256;
+	UE_LOG(LogTemp, Warning, TEXT("%d"), PlayerController->PlayerCameraManager->GetFOVAngle());
 }
 
 void ATilesController2::Tick(float DeltaTime)
 {
+	FVector Location;
+	FRotator Rotation;
+	PlayerController->GetPlayerViewPoint(Location, Rotation);
+
+	//UE_LOG(LogTemp, Warning, TEXT("%s"), *Location.ToString());
+	//DrawDebugLine(GetWorld(), Location, Location + Rotation.Vector()*100.f, FColor::Red, false, -1.f, 0.f, 10.f);
+
+	FHitResult Hit;
+	GetWorld()->LineTraceSingleByChannel(Hit, Location, Location + Rotation.Vector()*1000000.f, ECC_Visibility);
+	DrawDebugSphere(GetWorld(), Hit.Location, 50.f, 8, FColor::Red);
+
+	FHitResult LeftDown,LeftUp,RightUp,RightDown;
+	//0.f,90.f,-90.f)
+	
+	FRotator RLeftDown= Rotation+FRotator(-45.f, -45.f, -45.f), RLeftUp= Rotation+FRotator(45.f, -45.f, -45.f), 
+			 RRightUp= Rotation + FRotator(45.f, 45.f, 0), RRightDown= Rotation + FRotator(-45.f, 45.f, -45.f);
+
+	GetWorld()->LineTraceSingleByChannel(LeftDown, Location, Location + RLeftDown.Vector()*1000000.f, ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(LeftUp, Location, Location + RLeftUp.Vector()*1000000.f, ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(RightUp, Location, Location + RRightUp.Vector()*1000000.f, ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(RightDown, Location, Location + RRightDown.Vector()*1000000.f, ECC_Visibility);
+
+	//DrawDebugLine(GetWorld(), Location, Location + RLeftDown.Vector()*1000.f, FColor::Blue, false, -1.f, 0.f, 3.f);
+	DrawDebugSphere(GetWorld(), LeftDown.Location, 100.f, 8, FColor::Blue);
+	DrawDebugSphere(GetWorld(), LeftUp.Location, 100.f, 8, FColor::Blue);
+	DrawDebugSphere(GetWorld(), RightUp.Location, 100.f, 8, FColor::Blue);
+	DrawDebugSphere(GetWorld(), RightDown.Location, 100.f, 8, FColor::Blue);
+
 	//UE_LOG(LogTemp, Warning, TEXT("Tick"));
 	auto Distance = (mesh->GetComponentLocation() - PlayerController->GetPawn()->GetActorLocation()).Size();
 	int level = Distance / 200.f;
 	if(level==CurrentLevel)
 		return;
 	CurrentLevel = level;
-
+	
 	int z = FMath::Clamp(MaxLevel - CurrentLevel,0,MaxLevel);
 	int y; int x = y = 0;
 	LoaderPtr = NewObject<UTextureDownloader2>();
@@ -540,6 +548,7 @@ void ATilesController2::Tick(float DeltaTime)
 	auto url = FString::Format(*UrlString, { z, 0, 0});
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *url);
 	LoaderPtr->StartDownloadingTile(LoaderPtr->TextureMeta, url);
+
 
 }
 

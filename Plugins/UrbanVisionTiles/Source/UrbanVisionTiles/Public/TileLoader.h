@@ -338,14 +338,17 @@ public:
 	URuntimeMeshComponent* mesh;
 	//UTileTextureContainer2* TileLoader;
 
-	//UTexture2DDynamic* Texture;
-	
 	int CurrentLevel;
-	int MaxLevel=10;
-	class UTextureDownloader2* LoaderPtr;
-	//UMaterialInstanceDynamic* matInstance;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
+		int32 MaxLevel=10;
 	UPROPERTY()
 		FString UrlString = TEXT("http://a.tile.openstreetmap.org/{0}/{1}/{2}.png");
+
+	int32 MapSize;
+	class UTextureDownloader2* LoaderPtr;
+	//UMaterialInstanceDynamic* matInstance;
+	
 
 	TMap<FTileTextureMeta, class UTextureDownloader2*> loadingImages;
 
