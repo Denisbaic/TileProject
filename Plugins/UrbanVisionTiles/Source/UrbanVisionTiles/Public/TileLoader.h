@@ -296,6 +296,8 @@ public:
 
 	UPROPERTY()
 		FString UrlString = TEXT("http://a.tile.openstreetmap.org/{0}/{1}/{2}.png");
+	
+	static int32 SectionIndex;
 
 	//UFUNCTION(BlueprintCallable, Category = "Default")
 	UTileInfo* GetTileMaterial(int x, int y, int z, UMaterialInterface* mat, AActor* owner);
@@ -315,6 +317,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Default")
 		void Clear();
 };
+
 */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class URBANVISIONTILES_API ATilesController2 : public AActor
@@ -334,22 +337,21 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 		UMaterialInterface* TileMaterial;
-
-	URuntimeMeshComponent* mesh;
-	//UTileTextureContainer2* TileLoader;
-
-	int CurrentLevel;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
-		int32 MaxLevel=10;
+		int32 MaxLevel = 10;
 	UPROPERTY()
 		FString UrlString = TEXT("http://a.tile.openstreetmap.org/{0}/{1}/{2}.png");
 
+	URuntimeMeshComponent* mesh;
+	UTileTextureContainer2* TileLoader;
+
+	int CurrentLevel;
+
+	int32 SectionIndex=0;
+
 	int32 MapSize;
 	class UTextureDownloader2* LoaderPtr;
-	//UMaterialInstanceDynamic* matInstance;
 	
-
 	TMap<FTileTextureMeta, class UTextureDownloader2*> loadingImages;
 
 
@@ -358,6 +360,13 @@ public:
 
 
 private:
+	static void TileToPoints(TArray<FVector2D>& Points, int32 X,int32 Y)
+	{
+		Points= { {256.0f * X,256.0f * (Y + 1)}, {256.0f * (X + 1),256.0f * (Y + 1)}, {256.0f * (X + 1),256.0f * Y},{256.0f * X,256.0f * Y} };
+	}
+	static bool IsPointInsidePolygon(TArray<FVector2D>& Points, float X, float Y);
+	void TilesToSections(TSet<FIntPoint>& Tiles);
+	bool IsTileAccepted(TArray<FVector2D> & Tile, TArray<FVector2D>& Polygon);
 	static float GetMercatorXFromDegrees(double lon)
 	{
 		return ((lon / 180 * PI) + PI) / 2 / PI;
@@ -370,6 +379,7 @@ private:
 
 };
 
+
 UCLASS()
 class UTextureDownloader2 : public UObject
 {
@@ -379,12 +389,10 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
 		FTileTextureMeta TextureMeta;
 	UAsyncTaskDownloadImage* _loader;
-	UTexture2DDynamic* __Texture;
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
 		void StartDownloadingTile(FTileTextureMeta meta,FString url);
 	UMaterialInstanceDynamic* material;
-	URuntimeMeshComponent* mesh;
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
 		void OnTextureLoaded(UTexture2DDynamic* Texture);
