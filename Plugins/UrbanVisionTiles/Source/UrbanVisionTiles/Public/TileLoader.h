@@ -10,7 +10,7 @@
 #include "RuntimeMeshComponent.h"
 #include "TileLoader.generated.h"
 
-class UTileTextureContainer2;
+//class UTileTextureContainer2;
 class UTileTextureContainer;
 
 class UTileInfo;
@@ -252,80 +252,13 @@ private:
 
 ///////////////////////////////////////////////////////
 ///
-
-USTRUCT(BlueprintType)
-struct FTileTextureMeta2
-{
-	GENERATED_BODY()
-
-	FString Name;
-	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-		int X;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-		int Y;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-		int Z;
-
-	FORCEINLINE bool operator==(const FTileTextureMeta2& v) const
-	{
-		//return X == v.X && Y == v.Y && Z == v.Z;
-		return Name == v.Name;
-	}
-	
-	static bool GetParentName(FTileTextureMeta2& TextureMetaOut)
-	{
-		if(TextureMetaOut.Name.Len()<=1)
-			return false;
-		TextureMetaOut.Name.RemoveAt(TextureMetaOut.Name.Len() - 1);
-		return true;
-	}
-};
-
-/*
-UCLASS()
-class UTileTextureContainer2 : public UObject
-{
-	GENERATED_BODY()		
-public:
-	TMap<FTileTextureMeta2, class UTextureDownloader2*> CachedTextures;
-	//UPROPERTY()
-		//TMap<FTileTextureMeta2, UTileInfo*> CachedTiles;
-
-	UPROPERTY()
-		FString UrlString = TEXT("http://a.tile.openstreetmap.org/{0}/{1}/{2}.png");
-	
-	static int32 SectionIndex;
-
-	//UFUNCTION(BlueprintCallable, Category = "Default")
-	UTileInfo* GetTileMaterial(int x, int y, int z, UMaterialInterface* mat, AActor* owner);
-
-	UFUNCTION(BlueprintCallable, Category = "Default")
-		UTileInfo* GetTileMaterial(FTileTextureMeta2 meta, UMaterialInterface* mat, AActor* owner);
-
-	UFUNCTION(BlueprintCallable, Category = "Default")
-		void CacheTexture(FTileTextureMeta2 meta, UTexture* texture);
-
-	UFUNCTION(BlueprintCallable, Category = "Default")
-		void FreeLoader(FTileTextureMeta2 meta);
-
-	UFUNCTION(BlueprintCallable, Category = "Default")
-		bool IsTextureLoaded(FTileTextureMeta2 meta);
-
-	UFUNCTION(BlueprintCallable, Category = "Default")
-		void Clear();
-};
-
-*/
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class URBANVISIONTILES_API ATilesController2 : public AActor
+class URBANVISIONTILES_API ATilesController3 : public AActor
 {
 	GENERATED_BODY()
 public:
 	// Sets default values for this component's properties
-	ATilesController2();
+	ATilesController3();
 
 protected:
 	// Called when the game starts
@@ -342,61 +275,68 @@ public:
 	UPROPERTY()
 		FString UrlString = TEXT("http://a.tile.openstreetmap.org/{0}/{1}/{2}.png");
 
-	URuntimeMeshComponent* mesh;
-	UTileTextureContainer2* TileLoader;
+	//static ATilesController3* TileControllerInstance;
+	static URuntimeMeshComponent* mesh;
 
-	int CurrentLevel;
+	TMap<FIntVector, class UTileInfo3*> TileContainer;
+	TMap<FIntVector, class UTextureDownloader3*> DownloaderContainer;
 
-	int32 SectionIndex=0;
+	int32 SectionIndex = 0;
 
 	int32 MapSize;
-	class UTextureDownloader2* LoaderPtr;
-	
-	TMap<FTileTextureMeta, class UTextureDownloader2*> loadingImages;
-
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 		APlayerController* PlayerController;
-
-
+protected:
+	FORCEINLINE TArray<FIntVector> line( int32 x1, int32 x2, int32 y);
+	void GetCircleCoords(int32 cx, int32 cy, int32 radius, TArray<FIntVector>& CoordsOut);
 private:
-	static void TileToPoints(TArray<FVector2D>& Points, int32 X,int32 Y)
+	static void TileToPoints(TArray<FVector2D>& Points, int32 X, int32 Y)
 	{
-		Points= { {256.0f * X,256.0f * (Y + 1)}, {256.0f * (X + 1),256.0f * (Y + 1)}, {256.0f * (X + 1),256.0f * Y},{256.0f * X,256.0f * Y} };
+		Points.Empty();
+		Points = { {256.0f * X,256.0f * (Y + 1)}, {256.0f * (X + 1),256.0f * (Y + 1)}, {256.0f * (X + 1),256.0f * Y},{256.0f * X,256.0f * Y} };
 	}
 	static bool IsPointInsidePolygon(TArray<FVector2D>& Points, float X, float Y);
-	void TilesToSections(TSet<FIntPoint>& Tiles);
+	void TilesToSections(TArray<FIntVector>& Tiles);
 	bool IsTileAccepted(TArray<FVector2D> & Tile, TArray<FVector2D>& Polygon);
-	static float GetMercatorXFromDegrees(double lon)
-	{
-		return ((lon / 180 * PI) + PI) / 2 / PI;
-	}
-
-	static float GetMercatorYFromDegrees(double lat)
-	{
-		return (PI - FMath::Loge(FMath::Tan(PI / 4 + lat * PI / 180 / 2))) / 2 / PI;
-	}
-
 };
-
-
 UCLASS()
-class UTextureDownloader2 : public UObject
+class UTextureDownloader3 : public UObject
 {
 	GENERATED_BODY()
 public:
-
+	static TMap<FIntVector, class UTileInfo3*>*			 TileContainer;
+	static TMap<FIntVector, UTextureDownloader3*>*		 DownloaderContainer;
+	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-		FTileTextureMeta TextureMeta;
-	UAsyncTaskDownloadImage* _loader;
+		FIntVector TileCoords;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
+		int32 SectionIndex;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Default")
+		UAsyncTaskDownloadImage* loader;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Default")
+		UMaterialInstanceDynamic* material;
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
-		void StartDownloadingTile(FTileTextureMeta meta,FString url);
-	UMaterialInstanceDynamic* material;
+		void StartDownloadingTile(FIntVector _TileCoords, FString url);
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
 		void OnTextureLoaded(UTexture2DDynamic* Texture);
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
 		void OnLoadFailed(UTexture2DDynamic* Texture);
+};
+UCLASS()
+class UTileInfo3 : public UObject
+{
+	GENERATED_BODY()
+public:
+	static TMap<FIntVector, UTileInfo3*>*  TileContainer;
+	FIntVector TileCoords;
+	UMaterialInstanceDynamic* material;
+	UTexture* texture;
+
+	FTimerHandle TimerHandle;
+	void SetTimer();
+	void Pause();
+	void OnDelete();
 };

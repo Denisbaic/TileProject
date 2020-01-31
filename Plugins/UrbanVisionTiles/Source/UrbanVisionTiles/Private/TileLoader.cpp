@@ -8,7 +8,10 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
-
+#include "Engine/World.h"
+#include "DrawDebugHelpers.h"
+#include "GameFramework/PlayerController.h"
+#include "TimerManager.h"
 
 // Sets default values for this component's properties
 ATilesController::ATilesController()
@@ -336,9 +339,6 @@ void ATilesController::SplitTile(int x, int y, int z)
 		Tiles[parentMeta]->IsActive = false;
 		Tiles[parentMeta]->lastAcessTime = FDateTime::Now();
 	}
-	
-	
-	
 }
 
 void UTextureDownloader::StartDownloadingTile(FTileTextureMeta meta, FString url)
@@ -454,196 +454,102 @@ void UTileTextureContainer::Clear()
 
 //int32 UTileTextureContainer2::SectionIndex = 0;
 
-ATilesController2::ATilesController2()
+
+ATilesController3::ATilesController3()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	mesh = CreateDefaultSubobject<URuntimeMeshComponent>(TEXT("Tiles mesh"), true);
-	
-	
-	//TileMaterial = NewObject<UMaterialInterface>();
-	
 	SetRootComponent(mesh);
 }
 
-void ATilesController2::BeginPlay()
+void ATilesController3::BeginPlay()
 {
 	Super::BeginPlay();
-	MapSize = MaxLevel ? 256 * 2 << MaxLevel : 256;
-	/*
-	TArray<int32> Triangles;
-	TArray<FRuntimeMeshVertexSimple> _Vertices;
 
-	// First vertex
-	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(0, 256, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(0, 0)));
-	// Second vertex
-	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(256, 256, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(0, 1)));
-	// Third vertex
-	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(256, 0, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(1, 1)));
-	// Fourth vertex
-	_Vertices.Add(FRuntimeMeshVertexSimple(FVector(0, 0, 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(1, 0)));
+	UTileInfo3::TileContainer = &this->TileContainer;
+	UTextureDownloader3::TileContainer = &this->TileContainer;
+	UTextureDownloader3::DownloaderContainer = &this->DownloaderContainer;
 
-	Triangles.Add(0);
-	Triangles.Add(1);
-	Triangles.Add(2);
-	Triangles.Add(0);
-	Triangles.Add(2);
-	Triangles.Add(3);
-
-	// Create the section bounding box
-	//FBox SectionBoundingBox(FVector(0, 0, 0), FVector(256, 256, 0));
-
-	mesh->CreateMeshSection(0, _Vertices, Triangles);
-	*/
 	PlayerController = GetWorld()->GetFirstPlayerController();
-	//UE_LOG(LogTemp, Warning, TEXT("%s"), *PlayerController->GetName());
-	CurrentLevel= (mesh->GetComponentLocation() - PlayerController->GetPawn()->GetActorLocation()).Size();
-
-	UE_LOG(LogTemp, Warning, TEXT("%d"), PlayerController->PlayerCameraManager->GetFOVAngle());
 }
 
-void ATilesController2::Tick(float DeltaTime)
+void ATilesController3::Tick(float DeltaTime)
 {
+	TArray<FIntVector> Coords;
 	FVector Location;
-	FRotator Rotation;
-	PlayerController->GetPlayerViewPoint(Location, Rotation);
+	FRotator Rotator;
+	PlayerController->GetPlayerViewPoint(Location, Rotator);
 
-	//UE_LOG(LogTemp, Warning, TEXT("%s"), *Location.ToString());
-	//DrawDebugLine(GetWorld(), Location, Location + Rotation.Vector()*100.f, FColor::Red, false, -1.f, 0.f, 10.f);
-
-	//FHitResult Hit;
-	//GetWorld()->LineTraceSingleByChannel(Hit, Location, Location + Rotation.Vector()*1000000.f, ECC_Visibility);
-	//DrawDebugSphere(GetWorld(), Hit.Location, 50.f, 8, FColor::Red);
-	/*
-	FHitResult LeftDown,LeftUp,RightUp,RightDown;
-	
-	FRotator RLeftDown= Rotation+FRotator(-45.f, -45.f, -45.f), RLeftUp= Rotation+FRotator(45.f, -45.f, -45.f), 
-			 RRightUp= Rotation + FRotator(45.f, 45.f, 0), RRightDown= Rotation + FRotator(-45.f, 45.f, -45.f);
-
-	GetWorld()->LineTraceSingleByChannel(LeftDown, Location, Location + RLeftDown.Vector()*1000000.f, ECC_Visibility);
-	GetWorld()->LineTraceSingleByChannel(LeftUp, Location, Location + RLeftUp.Vector()*1000000.f, ECC_Visibility);
-	GetWorld()->LineTraceSingleByChannel(RightUp, Location, Location + RRightUp.Vector()*1000000.f, ECC_Visibility);
-	GetWorld()->LineTraceSingleByChannel(RightDown, Location, Location + RRightDown.Vector()*1000000.f, ECC_Visibility);
-
-	//DrawDebugLine(GetWorld(), Location, Location + RLeftDown.Vector()*1000.f, FColor::Blue, false, -1.f, 0.f, 3.f);
-	DrawDebugSphere(GetWorld(), LeftDown.Location, 100.f, 8, FColor::Blue);
-	DrawDebugSphere(GetWorld(), LeftUp.Location, 100.f, 8, FColor::Blue);
-	DrawDebugSphere(GetWorld(), RightUp.Location, 100.f, 8, FColor::Blue);
-	DrawDebugSphere(GetWorld(), RightDown.Location, 100.f, 8, FColor::Blue);
-	DrawDebugSphere(GetWorld(), (RightDown.Location+ LeftDown.Location+ LeftUp.Location+ RightUp.Location)/4, 100.f, 8, FColor::Red);
-	
-	
-	TArray<FVector2D> Polygon = { {LeftDown.Location.X,LeftDown.Location.Y},
-		{LeftUp.Location.X,LeftUp.Location.Y},
-		{RightUp.Location.X,RightUp.Location.Y},
-		{RightDown.Location.X,RightDown.Location.Y} };
-
-	//алгоритм для того, чтобы узнать какие тайлы прорисовывать
-	int32 BeginX=int(((RightDown.Location + LeftDown.Location + LeftUp.Location + RightUp.Location)/4).X)>>8, BeginY= int(((RightDown.Location + LeftDown.Location + LeftUp.Location + RightUp.Location) / 4).Y) >> 8;
-	//TODO начинать с ближайшей к игроку точки
-	//начальные точки поиска
-	//TArray<FVector2D> CheckPoints={{256*BeginX,256*BeginY},{256 * BeginX,256 * (BeginY+1)}, {256 * (BeginX+1),256 * (BeginY+1)}, {256 * (BeginX+1),256 * BeginY}};
-	TArray<FIntPoint> Tiles = { {BeginX, BeginY} };
-	//TArray<FIntPoint> TilesToCheck={{BeginX, BeginY}};
-
-	TArray<FVector2D> CheckPoints;
-
-	//нашли начальный тайл
-	//идём вправо до упора, потом влево
-	//идём вверх, если есть хотя бы одна видимая точка повторяем прошлую строчку
-	//если верхний тайл скрылся, делаем тоже самое с самым нижним тайлом
-
-	*/
-
-	
-	FIntPoint BeginTile = { FMath::Abs<int32>(Location.X/256.0),FMath::Abs<int32>(Location.Y / 256.0)};
-	TSet<FIntPoint> Tiles = { BeginTile, {FMath::Abs<int32>(BeginTile.X-1),FMath::Abs<int32>(BeginTile.Y-1)}, 
-		{FMath::Abs<int32>(BeginTile.X+1),FMath::Abs<int32>(BeginTile.Y - 1)},
-		{FMath::Abs<int32>(BeginTile.X - 1),FMath::Abs<int32>(BeginTile.Y + 1)},
-		{FMath::Abs<int32>(BeginTile.X + 1),FMath::Abs<int32>(BeginTile.Y + 1)}};
-
-
-
-
-	for (auto elem : Tiles)
+	GetCircleCoords(int32(Location.X / 256.f), int32(Location.Y / 256.f), 5, Coords);
+	Coords.RemoveAll([](FIntVector const & Vec)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Tile : %d %d"), elem.X,elem.Y);
-	}
-	TilesToSections(Tiles);
-	////////////////////////////////////////////////////////////
-	//UE_LOG(LogTemp, Warning, TEXT("Tick"));
-	/*
-	auto Distance = (mesh->GetComponentLocation() - PlayerController->GetPawn()->GetActorLocation()).Size();
-	int level = Distance / 200.f;
-	if(level==CurrentLevel)
-		return;
-	CurrentLevel = level;
-	
-	int z = FMath::Clamp(MaxLevel - CurrentLevel,0,MaxLevel);
-	int y; int x = y = 0;
-	LoaderPtr = NewObject<UTextureDownloader2>();
-	LoaderPtr->TextureMeta = { 0,0,z };
+		return Vec.X < 0 || Vec.Y < 0 || Vec.Z < 0;
+	});
 
-	UMaterialInstanceDynamic* matInstance = UMaterialInstanceDynamic::Create(TileMaterial,this);
-	LoaderPtr->material = matInstance;
-	mesh->SetMaterial(0, matInstance);
-	//loadingImages.Add(LoaderPtr->TextureMeta, LoaderPtr);
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *LoaderPtr->TextureMeta.ToString());
-	auto url = FString::Format(*UrlString, { z, 0, 0});
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *url);
-	LoaderPtr->StartDownloadingTile(LoaderPtr->TextureMeta, url);
-	*/
+	UE_LOG(LogTemp, Warning, TEXT("Coords lenght %d"), Coords.Num());
+	for (auto& Element : Coords)
+	{
+		DrawDebugSphere(GetWorld(), FVector(Element.X*256.f,Element.Y*256.f,0), 10, 4, FColor::Red);
+	}
+
+	TilesToSections(Coords);
 }
 
-
-bool ATilesController2::IsPointInsidePolygon(TArray<FVector2D>& Points, float X, float Y)
+TArray<FIntVector> ATilesController3::line(int32 x1, int32 x2, int32 y)
 {
-	int i1, i2, n, N, S, S1, S2, S3;
-	bool flag=false;
-	N = Points.Num();
-	for (n = 0; n < N; n++)
+	TArray<FIntVector> TempArr;
+	for (int i = x1; i <= x2; ++i)
 	{
-		flag = false;
-		i1 = n < N - 1 ? n + 1 : 0;
-		while (!flag)
-		{
-			i2 = i1 + 1;
-			if (i2 >= N)
-				i2 = 0;
-			if (i2 == (n < N - 1 ? n + 1 : 0))
-				break;
-			S = abs(Points[i1].X * (Points[i2].Y - Points[n].Y) +Points[i2].X * (Points[n].Y - Points[i1].Y) +Points[n].X  * (Points[i1].Y - Points[i2].Y));
-			S1 = abs(Points[i1].X * (Points[i2].Y - Y) +	Points[i2].X * (Y - Points[i1].Y) +	X * (Points[i1].Y - Points[i2].Y));
-			S2 = abs(Points[n].X * (Points[i2].Y - Y) + Points[i2].X * (Y - Points[n].Y) +	X * (Points[n].Y - Points[i2].Y));
-			S3 = abs(Points[i1].X * (Points[n].Y - Y) + Points[n].X * (Y - Points[i1].Y) +	X * (Points[i1].Y - Points[n].Y));
-			
-			if (S == S1 + S2 + S3)
-			{
-				flag = true;
-				break;
-			}
-			i1 = i1 + 1;
-			if (i1 >= N)
-			{
-				i1 = 0;
-			}
-		}
-		if (!flag)
-			break;
+		TempArr.Emplace( i,y ,5);
 	}
-	return flag;
+	return TempArr;
 }
 
-void ATilesController2::TilesToSections(TSet<FIntPoint>& Tiles)
+void ATilesController3::GetCircleCoords(int32 cx, int32 cy, int32 radius, TArray<FIntVector>& CoordsOut)
+{
+	int x = radius, y = 0;
+	int d = 3 - 2 * radius;
+
+	while (y <= x)
+	{
+		CoordsOut.Append(line(cx - x, cx + x, cy - y));
+		CoordsOut.Append(line(cx - x, cx + x, cy + y));
+		CoordsOut.Append(line(cx - y, cx + y, cy + x));
+		CoordsOut.Append(line(cx - y, cx + y, cy - x));
+
+		if (d <= 0)
+		{
+			d += 4 * y + 6;
+			++y;
+		}
+		else
+		{
+			d += 4 * (y - x) + 10;
+			--x, ++y;
+		}
+	}
+}
+
+bool ATilesController3::IsPointInsidePolygon(TArray<FVector2D>& Points, float X, float Y)
+{
+	//TODO
+	return true;
+}
+
+void ATilesController3::TilesToSections(TArray<FIntVector>& Tiles)
 {
 	TArray<int32> Triangles;
 	TArray<FRuntimeMeshVertexSimple> _Vertices;
-	TArray<FVector2D> TilePoints;
+	//TArray<FVector2D> TilePoints;
 	for (auto& Element : Tiles)
 	{
 		//TileToPoints(TilePoints,Element.X,Element.Y);
-
+		if(TileContainer.Contains(Element) || DownloaderContainer.Contains(Element))
+		{
+			continue;
+		}
 		// First vertex
-		_Vertices.Add(FRuntimeMeshVertexSimple(FVector(256.0f*Element.X, 256.0f*(Element.Y+1), 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(0, 0)));
+		_Vertices.Add(FRuntimeMeshVertexSimple(FVector(256.0f*Element.X, 256.0f*(Element.Y + 1), 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(0, 0)));
 		// Second vertex
 		_Vertices.Add(FRuntimeMeshVertexSimple(FVector(256.0f*(Element.X + 1), 256.0f*(Element.Y + 1), 0), FVector(0, 0, 1), FRuntimeMeshTangent(0, -1, 0), FColor::White, FVector2D(0, 1)));
 		// Third vertex
@@ -659,54 +565,93 @@ void ATilesController2::TilesToSections(TSet<FIntPoint>& Tiles)
 		Triangles.Add(3);
 
 		mesh->CreateMeshSection(++SectionIndex, _Vertices, Triangles);
-		UTextureDownloader2* LoaderPtr=NewObject<UTextureDownloader2>();
+		UTextureDownloader3* LoaderPtr = NewObject<UTextureDownloader3>();
 		UMaterialInstanceDynamic * matInstance = UMaterialInstanceDynamic::Create(TileMaterial, this);
+		LoaderPtr->TileCoords = Element;
 		LoaderPtr->material = matInstance;
 		mesh->SetMaterial(SectionIndex, matInstance);
-		
-		loadingImages.Add({ Element.X,Element.Y,MaxLevel }, LoaderPtr);
-		auto url = FString::Format(*UrlString, { MaxLevel, Element.X, Element.Y });
-		LoaderPtr->StartDownloadingTile(LoaderPtr->TextureMeta, url);
 
+		
+		auto url = FString::Format(*UrlString, { Element.Z, Element.X, Element.Y });
+		LoaderPtr->StartDownloadingTile(LoaderPtr->TileCoords, url);
+		DownloaderContainer.Add(LoaderPtr->TileCoords, LoaderPtr);
 		_Vertices.Empty();
 		Triangles.Empty();
+		
 		//mesh->CreateMeshSection(FCString::Atoi(*(FString::FromInt(Element.X) + FString::FromInt(Element.Y) + FString::FromInt(MaxLevel))), _Vertices, Triangles);
 	}
 }
 
-bool ATilesController2::IsTileAccepted(TArray<FVector2D> & Tile, TArray<FVector2D>& Polygon)
+bool ATilesController3::IsTileAccepted(TArray<FVector2D>& Tile, TArray<FVector2D>& Polygon)
 {
-	bool AllPointsNotInViewArea = false;
-	for (auto point : Tile)
+	//TODO
+	return true;
+}
+
+
+TMap<FIntVector, UTileInfo3*>* UTileInfo3::TileContainer = nullptr;
+TMap<FIntVector, UTileInfo3*>* UTextureDownloader3::TileContainer = nullptr;
+TMap<FIntVector, UTextureDownloader3*>* UTextureDownloader3::DownloaderContainer = nullptr;
+URuntimeMeshComponent* ATilesController3::mesh = nullptr;
+
+void UTextureDownloader3::StartDownloadingTile(FIntVector _TileCoords, FString url)
+{
+	UE_LOG(LogTemp, Warning, TEXT("start loading %d %d %d"), TileCoords.X, TileCoords.Y, TileCoords.Z);
+	this->TileCoords = _TileCoords;
+	loader = UAsyncTaskDownloadImage::DownloadImage(url);
+	loader->OnSuccess.AddDynamic(this, &UTextureDownloader3::OnTextureLoaded);
+	loader->OnFail.AddDynamic(this, &UTextureDownloader3::OnLoadFailed);
+}
+
+void UTextureDownloader3::OnTextureLoaded(UTexture2DDynamic* Texture)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Loaded %d %d %d"), TileCoords.X, TileCoords.Y, TileCoords.Z);
+	if (!Texture->IsValidLowLevel())
 	{
-		if(IsPointInsidePolygon(Polygon,point.X,point.Y))
-		{
-			AllPointsNotInViewArea = true;
-			break;
-		}
+		DownloaderContainer->Remove(TileCoords);
+		UE_LOG(LogTemp, Warning, TEXT("Loaded texture is corrupt"));
+		return;
 	}
-	return AllPointsNotInViewArea;
+	if (!material->IsValidLowLevel())
+	{
+		DownloaderContainer->Remove(TileCoords);
+		UE_LOG(LogTemp, Warning, TEXT("Texture loaded for already destroyed tile"));
+		return;
+	}
+	DownloaderContainer->Remove(TileCoords);
+	//UMaterial
+	material->SetTextureParameterValue("Tile", (UTexture*)(Texture));
+
+	UTileInfo3* TempTile = NewObject<UTileInfo3>();
+	//TempTile->SetTimer();
+	TempTile->TileCoords = TileCoords;
+	TempTile->material = material;
+	TempTile->texture = static_cast<UTexture*>(Texture);
+	TileContainer->Add(TileCoords, TempTile);
 }
 
-void UTextureDownloader2::StartDownloadingTile(FTileTextureMeta meta,  FString url)
+void UTextureDownloader3::OnLoadFailed(UTexture2DDynamic* Texture)
 {
-	//TextureMeta = meta;
-	//__Texture = _Texture;
-	UE_LOG(LogTemp, Warning, TEXT("In StartDownloadingTile"));
-	_loader = UAsyncTaskDownloadImage::DownloadImage(url);
-	_loader->OnSuccess.AddDynamic(this, &UTextureDownloader2::OnTextureLoaded);
-	_loader->OnFail.AddDynamic(this, &UTextureDownloader2::OnLoadFailed);
+	DownloaderContainer->Remove(TileCoords);
+
+	UE_LOG(LogTemp, Warning, TEXT("Load failed %d %d %d"),TileCoords.X,TileCoords.Y,TileCoords.Z);
 }
 
-void UTextureDownloader2::OnTextureLoaded(UTexture2DDynamic* Texture)
+void UTileInfo3::SetTimer()
 {
-	//material=mesh->CreateAndSetMaterialInstanceDynamic(0);
-	material->SetTextureParameterValue(FName("Tile"), (UTexture*)(Texture));	
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *TextureMeta.ToString());
-	
+	if (GetWorld()->GetTimerManager().IsTimerActive(TimerHandle))
+		GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UTileInfo3::OnDelete, 30.f);
+	//GWorld->GetTimerManager().SetTimer(TimerHandle, this, &FTileInfo3::OnDelete,30.f);
 }
 
-void UTextureDownloader2::OnLoadFailed(UTexture2DDynamic * Texture)
+void UTileInfo3::Pause()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Load failed"));
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
+}
+
+void UTileInfo3::OnDelete()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Deleted %d %d %d"), TileCoords.X, TileCoords.Y, TileCoords.Z);
+	TileContainer->Remove(TileCoords);
 }
