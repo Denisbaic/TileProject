@@ -15,51 +15,6 @@ class UTileTextureContainer;
 
 class UTileInfo;
 
-#pragma region TileMeta
-
-USTRUCT(BlueprintType)
-struct FTileTextureMeta
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-		int32 X;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-		int32 Y;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-		int32 Z;
-
-	FORCEINLINE bool operator==(const FTileTextureMeta& v) const
-	{
-		return X == v.X && Y == v.Y && Z == v.Z;
-	}
-	FString ToString() const
-	{
-		return " X:"+FString::FromInt(X)+ " Y:" + FString::FromInt(Y)+ " Z:" + FString::FromInt(Z);
-	}
-};
-
-FORCEINLINE uint32 GetTypeHash(const FTileTextureMeta& k)
-{
-	return (std::hash<int>()(k.X) ^ std::hash<int>()(k.Y) ^ std::hash<int>()(k.Z));
-}
-
-namespace std
-{
-	template <>
-	struct hash<FTileTextureMeta>
-	{
-		size_t operator()(const FTileTextureMeta& k) const
-		{
-			// Compute individual hash values for two data members and combine them using XOR and bit shifting
-			return (hash<int>()(k.X) ^ hash<int>()(k.Y) ^ hash<int>()(k.Z));
-		}
-	};
-}
-#pragma endregion
-
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class URBANVISIONTILES_API ATilesController : public AActor
 {
@@ -72,22 +27,19 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
-	UPROPERTY()
-		TArray<FTileTextureMeta> pendingDelete;
-	//UPROPERTY()
-		TArray<FTileTextureMeta, FHeapAllocator> pendingUpdate;
+		TArray<FIntVector> pendingDelete;
+		TArray<FIntVector, FHeapAllocator> pendingUpdate;
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	float GetPixelSize(FTileTextureMeta meta);
+	float GetPixelSize(FIntVector meta);
 
 	UFUNCTION(BlueprintCallable, Category = "Tiles", meta = (CallInEditor = "true"))
 	void CreateMesh();
 
 	UFUNCTION(BlueprintCallable, Category = "Tiles", meta = (CallInEditor = "true"))
 	void ClearMesh();
-
 
 	UFUNCTION(BlueprintCallable, Category = "Tiles")
 		void CreateMeshAroundPoint(int z, int x0, int y0);
@@ -104,7 +56,7 @@ public:
 	float CenterLat;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
-	TMap<FTileTextureMeta, UTileInfo*> Tiles;
+	TMap<FIntVector, UTileInfo*> Tiles;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 	APlayerController* PlayerController;
@@ -115,11 +67,11 @@ public:
 	UPROPERTY()
 	TArray<int> freeIndices;
 	UPROPERTY()
-	TMap<FTileTextureMeta, int> TileIndecies;
+	TMap<FIntVector, int> TileIndecies;
 	
 
 	UPROPERTY()
-	TSet<FTileTextureMeta> SplitTiles;
+	TSet<FIntVector> SplitTiles;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Tiles")
 	int BaseLevel = 10;
@@ -156,13 +108,13 @@ private:
 
 	int CreateTileMesh(int x, int y, int z);
 
-	int CreateTileMesh(FTileTextureMeta meta);
+	int CreateTileMesh(FIntVector meta);
 
-	void ClearTileMesh(FTileTextureMeta meta);
+	void ClearTileMesh(FIntVector meta);
 
 	bool IsTileSplit(int x, int y, int z);
 
-	void SplitTile(FTileTextureMeta meta);
+	void SplitTile(FIntVector meta);
 	
 	void SplitTile(int x, int y, int z);
 };
@@ -175,11 +127,11 @@ class UTextureDownloader : public UObject
 public:
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Default")
-	FTileTextureMeta TextureMeta;
+	FIntVector TextureMeta;
 	UAsyncTaskDownloadImage* _loader;
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
-	void StartDownloadingTile(FTileTextureMeta meta, FString url);
+	void StartDownloadingTile(FIntVector meta, FString url);
 
 	UTileTextureContainer* TileContainer;
 	UMaterialInstanceDynamic* material;
@@ -221,10 +173,10 @@ class UTileTextureContainer : public UObject
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TMap<FTileTextureMeta, UTextureDownloader*> loadingImages;
+	TMap<FIntVector, UTextureDownloader*> loadingImages;
 public:
 	UPROPERTY()
-		TMap< FTileTextureMeta, UTileInfo*> CachedTiles;	
+		TMap< FIntVector, UTileInfo*> CachedTiles;	
 	
 	UPROPERTY()
 	FString UrlString = TEXT("http://a.tile.openstreetmap.org/{0}/{1}/{2}.png");
@@ -233,16 +185,16 @@ public:
 	UTileInfo* GetTileMaterial(int x, int y, int z, UMaterialInterface* mat, AActor* owner);
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
-	UTileInfo* GetTileMaterial(FTileTextureMeta meta, UMaterialInterface* mat, AActor* owner);
+	UTileInfo* GetTileMaterial(FIntVector meta, UMaterialInterface* mat, AActor* owner);
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
-	void CacheTexture(FTileTextureMeta meta, UTexture* texture);
+	void CacheTexture(FIntVector meta, UTexture* texture);
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
-	void FreeLoader(FTileTextureMeta meta);
+	void FreeLoader(FIntVector meta);
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
-	bool IsTextureLoaded(FTileTextureMeta meta);
+	bool IsTextureLoaded(FIntVector meta);
 
 	UFUNCTION(BlueprintCallable, Category = "Default")
 	void Clear();

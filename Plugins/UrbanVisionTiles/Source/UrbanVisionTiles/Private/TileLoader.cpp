@@ -47,8 +47,8 @@ void ATilesController::Tick(float DeltaTime)
 	
 	CreateMeshAroundPoint(BaseLevel, x0, y0);
 
-	//TArray<FTileTextureMeta> pendingDelete;
-	//TArray<FTileTextureMeta, FHeapAllocator> pendingUpdate;	
+	//TArray<FIntVector> pendingDelete;
+	//TArray<FIntVector, FHeapAllocator> pendingUpdate;	
 	for (auto tile : TileIndecies)
 	{
 		if (SplitTiles.Contains(tile.Key)) continue;
@@ -88,18 +88,18 @@ void ATilesController::Tick(float DeltaTime)
 		{			
 			SplitTile(meta);			
 		}
-		FTileTextureMeta parentMeta = FTileTextureMeta{ meta.X / 2, meta.Y / 2, meta.Z - 1 };
+		FIntVector parentMeta = FIntVector{ meta.X / 2, meta.Y / 2, meta.Z - 1 };
 		float parentTilePixelsSize = GetPixelSize(parentMeta);
 		if (parentTilePixelsSize < 200.0f && meta.Z > BaseLevel)
 		{
 
-			auto x = meta.X - (meta.X % 2);
-			auto y = meta.Y - (meta.Y % 2);
+			int32 x = meta.X - (meta.X % 2);
+			int32 y = meta.Y - (meta.Y % 2);
 
 			bool flag = false;
 			for (int i = 0; i < 4; i++)
 			{
-				auto meta1 = FTileTextureMeta{ x + i % 2, y + i / 2, meta.Z };
+				auto meta1 = FIntVector{ x + i % 2, y + i / 2, meta.Z };
 				if (!TileIndecies.Contains(meta1)) {										
 					flag = true;
 				}
@@ -109,7 +109,7 @@ void ATilesController::Tick(float DeltaTime)
 				SplitTiles.Remove(parentMeta);
 				for (int i = 0; i < 4; i++)
 				{
-					auto meta1 = FTileTextureMeta{ x + i % 2, y + i / 2, meta.Z };
+					FIntVector meta1 = { x + i % 2, y + i / 2, meta.Z };
 					ClearTileMesh(meta1);					
 				}
 			}
@@ -119,7 +119,7 @@ void ATilesController::Tick(float DeltaTime)
 	pendingUpdate.Empty();
 }
 
-float ATilesController::GetPixelSize(FTileTextureMeta meta)
+float ATilesController::GetPixelSize(FIntVector meta)
 {
 	auto pos = GetXYOffsetFromMercatorOffset(meta.Z, meta.X, meta.Y) + GetActorLocation();
 	auto manager = GEngine->GetFirstLocalPlayerController(GetWorld())->PlayerCameraManager;
@@ -169,7 +169,7 @@ void ATilesController::CreateMeshAroundPoint(int z, int x0, int y0)
 	{
 		for (int y = 0; y < BaseLevelSize; y++)
 		{
-			if (!SplitTiles.Contains(FTileTextureMeta{ x + x0 - BaseLevelSize / 2, y + y0 - BaseLevelSize / 2, z })) {
+			if (!SplitTiles.Contains(FIntVector{ x + x0 - BaseLevelSize / 2, y + y0 - BaseLevelSize / 2, z })) {
 				CreateTileMesh(x + x0 - BaseLevelSize / 2, y + y0 - BaseLevelSize / 2, z);
 			}
 		}
@@ -209,11 +209,11 @@ FVector ATilesController::GetXYOffsetFromMercatorOffset(int z, int x, int y)
 
 int ATilesController::CreateTileMesh(int x, int y, int z)
 {
-	auto meta = FTileTextureMeta{ x, y, z };
+	auto meta = FIntVector{ x, y, z };
 	return CreateTileMesh(meta);
 }
 
-int ATilesController::CreateTileMesh(FTileTextureMeta meta)
+int ATilesController::CreateTileMesh(FIntVector meta)
 {	
 	if (TileIndecies.Contains(meta)) {
 		//mesh->SetMeshSectionVisible(TileIndecies[meta], true);
@@ -277,7 +277,7 @@ int ATilesController::CreateTileMesh(FTileTextureMeta meta)
 	return  sectionIndex;
 }
 
-void ATilesController::ClearTileMesh(FTileTextureMeta meta)
+void ATilesController::ClearTileMesh(FIntVector meta)
 {
 	//mesh->ClearMeshSection(index);
 	int index = TileIndecies[meta];
@@ -299,24 +299,24 @@ void ATilesController::ClearTileMesh(FTileTextureMeta meta)
 bool ATilesController::IsTileSplit(int x, int y, int z)
 {
 	return
-		TileIndecies.Contains(FTileTextureMeta{x * 2, y * 2, z + 1}) &&
-		TileIndecies.Contains(FTileTextureMeta{x * 2 + 1, y * 2, z + 1}) &&
-		TileIndecies.Contains(FTileTextureMeta{x * 2, y * 2 + 1, z + 1}) &&
-		TileIndecies.Contains(FTileTextureMeta{x * 2 + 1, y * 2 + 1, z + 1});
+		TileIndecies.Contains(FIntVector{x * 2, y * 2, z + 1}) &&
+		TileIndecies.Contains(FIntVector{x * 2 + 1, y * 2, z + 1}) &&
+		TileIndecies.Contains(FIntVector{x * 2, y * 2 + 1, z + 1}) &&
+		TileIndecies.Contains(FIntVector{x * 2 + 1, y * 2 + 1, z + 1});
 }
 
-void ATilesController::SplitTile(FTileTextureMeta m)
+void ATilesController::SplitTile(FIntVector m)
 {
 	SplitTile(m.X, m.Y, m.Z);
 }
 
 void ATilesController::SplitTile(int x, int y, int z)
 {
-	auto parentMeta = FTileTextureMeta{ x, y, z };
-	auto childMeta1 = FTileTextureMeta{ x * 2, y * 2, z + 1 };
-	auto childMeta2 = FTileTextureMeta{ x * 2 + 1, y * 2, z + 1 };
-	auto childMeta3 = FTileTextureMeta{ x * 2, y * 2 + 1, z + 1 };
-	auto childMeta4 = FTileTextureMeta{ x * 2 + 1, y * 2 + 1, z + 1 };
+	FIntVector parentMeta = { x, y, z };
+	FIntVector childMeta1 = { x * 2, y * 2, z + 1 };
+	FIntVector childMeta2 = { x * 2 + 1, y * 2, z + 1 };
+	FIntVector childMeta3 = { x * 2, y * 2 + 1, z + 1 };
+	FIntVector childMeta4 = { x * 2 + 1, y * 2 + 1, z + 1 };
 
 	TileLoader->GetTileMaterial(childMeta1, TileMaterial, this);
 	TileLoader->GetTileMaterial(childMeta2, TileMaterial, this);
@@ -340,7 +340,7 @@ void ATilesController::SplitTile(int x, int y, int z)
 	}
 }
 
-void UTextureDownloader::StartDownloadingTile(FTileTextureMeta meta, FString url)
+void UTextureDownloader::StartDownloadingTile(FIntVector meta, FString url)
 {
 	TextureMeta = meta;	
 	_loader = UAsyncTaskDownloadImage::DownloadImage(url);
@@ -372,17 +372,17 @@ void UTextureDownloader::OnLoadFailed(UTexture2DDynamic* Texture)
 
 UTileInfo* UTileTextureContainer::GetTileMaterial(int x, int y, int z, UMaterialInterface* mat, AActor* owner)
 {
-	auto meta = FTileTextureMeta{ x, y, z };
+	auto meta = FIntVector{ x, y, z };
 	return GetTileMaterial(meta, mat, owner);
 }
 
-UTileInfo* UTileTextureContainer::GetTileMaterial(FTileTextureMeta meta, UMaterialInterface* mat, AActor* owner)
+UTileInfo* UTileTextureContainer::GetTileMaterial(FIntVector meta, UMaterialInterface* mat, AActor* owner)
 {
 	//UE_LOG(LogTemp, Warning, TEXT("Total cached textures: %i"), CachedTiles.Num());
 
 	if (CachedTiles.Num() > 512)
 	{
-		TArray<FTileTextureMeta> pendingDelete;
+		TArray<FIntVector> pendingDelete;
 
 		for (auto cached : CachedTiles)
 		{
@@ -423,14 +423,14 @@ UTileInfo* UTileTextureContainer::GetTileMaterial(FTileTextureMeta meta, UMateri
 }
 
 
-void UTileTextureContainer::CacheTexture(FTileTextureMeta meta, UTexture* texture)
+void UTileTextureContainer::CacheTexture(FIntVector meta, UTexture* texture)
 {
 	if (CachedTiles.Contains(meta)) {
 		CachedTiles[meta]->Texture = texture;
 	}
 }
 
-void UTileTextureContainer::FreeLoader(FTileTextureMeta meta)
+void UTileTextureContainer::FreeLoader(FIntVector meta)
 {
 	if (!loadingImages.Contains(meta))
 	{
@@ -441,7 +441,7 @@ void UTileTextureContainer::FreeLoader(FTileTextureMeta meta)
 	//unusedDownloaders.Add(loader);
 }
 
-bool UTileTextureContainer::IsTextureLoaded(FTileTextureMeta meta)
+bool UTileTextureContainer::IsTextureLoaded(FIntVector meta)
 {
 	return CachedTiles.Contains(meta) && CachedTiles[meta]->Texture && CachedTiles[meta]->Texture->IsValidLowLevel();
 }
