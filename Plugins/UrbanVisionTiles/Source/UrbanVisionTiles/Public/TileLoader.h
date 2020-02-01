@@ -332,11 +332,8 @@ class UTileInfo3 : public UObject
 public:
 	static TMap<FIntVector, UTileInfo3*>*  TileContainer;
 	FIntVector TileCoords;
+	int32 SectionIndex;
 	UMaterialInstanceDynamic* material;
 	UTexture* texture;
-
-	FTimerHandle TimerHandle;
-	void SetTimer();
-	void Pause();
-	void OnDelete();
+	FDateTime LastTimeAccess;
 };

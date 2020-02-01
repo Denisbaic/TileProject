@@ -87,7 +87,6 @@ void ATilesController::Tick(float DeltaTime)
 		if (tilePixelsSize > 256.0f && meta.Z <= MaxLevel)
 		{			
 			SplitTile(meta);			
-
 		}
 		FTileTextureMeta parentMeta = FTileTextureMeta{ meta.X / 2, meta.Y / 2, meta.Z - 1 };
 		float parentTilePixelsSize = GetPixelSize(parentMeta);
@@ -483,7 +482,11 @@ void ATilesController3::Tick(float DeltaTime)
 	GetCircleCoords(int32(Location.X / 256.f), int32(Location.Y / 256.f), 5, Coords);
 	Coords.RemoveAll([](FIntVector const & Vec)
 	{
-		return Vec.X < 0 || Vec.Y < 0 || Vec.Z < 0;
+		if(Vec.Z==0)
+		{
+			return  Vec.X != 0 || Vec.Y != 0;
+		}
+		return Vec.X < 0 || Vec.Y < 0 || Vec.Z < 0 || Vec.X>(4<<(Vec.Z-1))/2 || Vec.Y>(4 << (Vec.Z - 1))/2;
 	});
 
 	UE_LOG(LogTemp, Warning, TEXT("Coords lenght %d"), Coords.Num());
@@ -493,6 +496,19 @@ void ATilesController3::Tick(float DeltaTime)
 	}
 
 	TilesToSections(Coords);
+
+	TArray<FIntVector> TileKeys;
+	for (auto& Element : TileContainer)
+	{
+		if((FDateTime::Now() - Element.Value->LastTimeAccess).GetSeconds()>5)
+		{
+			TileKeys.Add(Element.Key);
+		}
+	}
+	for (auto& Element : TileKeys)
+	{
+		mesh->ClearMeshSection(TileContainer.FindAndRemoveChecked(Element)->SectionIndex);
+	}
 }
 
 TArray<FIntVector> ATilesController3::line(int32 x1, int32 x2, int32 y)
@@ -623,35 +639,35 @@ void UTextureDownloader3::OnTextureLoaded(UTexture2DDynamic* Texture)
 	material->SetTextureParameterValue("Tile", (UTexture*)(Texture));
 
 	UTileInfo3* TempTile = NewObject<UTileInfo3>();
-	//TempTile->SetTimer();
 	TempTile->TileCoords = TileCoords;
 	TempTile->material = material;
 	TempTile->texture = static_cast<UTexture*>(Texture);
+	TempTile->SectionIndex = SectionIndex;
+	TempTile->LastTimeAccess= FDateTime::Now();
+	//TempTile->SetTimer();
+	
 	TileContainer->Add(TileCoords, TempTile);
 }
 
 void UTextureDownloader3::OnLoadFailed(UTexture2DDynamic* Texture)
 {
 	DownloaderContainer->Remove(TileCoords);
-
 	UE_LOG(LogTemp, Warning, TEXT("Load failed %d %d %d"),TileCoords.X,TileCoords.Y,TileCoords.Z);
 }
-
+/*
 void UTileInfo3::SetTimer()
 {
-	if (GetWorld()->GetTimerManager().IsTimerActive(TimerHandle))
-		GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UTileInfo3::OnDelete, 30.f);
+	//if (GetWorld()->GetTimerManager().IsTimerActive(TimerHandle))
+	//GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UTileInfo3::OnDelete, 60.f, false);
 	//GWorld->GetTimerManager().SetTimer(TimerHandle, this, &FTileInfo3::OnDelete,30.f);
-}
-
-void UTileInfo3::Pause()
-{
-	GetWorld()->GetTimerManager().ClearTimer(TimerHandle);
 }
 
 void UTileInfo3::OnDelete()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Deleted %d %d %d"), TileCoords.X, TileCoords.Y, TileCoords.Z);
+	ATilesController3::mesh->ClearMeshSection(SectionIndex);
 	TileContainer->Remove(TileCoords);
 }
+*/
